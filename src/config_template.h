@@ -4,7 +4,6 @@
 
 /* debug */
 //#define DEBUG_LOG
-//#define DEBUG_REQUEST
 
 /* pins */
 #define AO_FAN_PIN    D4
