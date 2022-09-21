@@ -37,13 +37,13 @@
 
 /* types */
 typedef struct {
-  unsigned short rpm;
+  unsigned short rpm, water;
   unsigned char door;
   bool master;
 } config_t;
 
 /* globals */
-Servo water_servo, door_servo;
+Servo door_servo;
 AM2320 temp_sensor;
 #ifdef API_HTTPS
 WiFiClientSecure client;
@@ -52,7 +52,7 @@ WiFiClient client;
 #endif
 
 short control_val = 0;
-config_t config = {.rpm = 0, .door = 0, .master = false};
+config_t config = {.rpm = 0, .water = 5, .door = 0, .master = false};
 
 #ifdef API_HTTPS
 const char FINGERPRINT[] PROGMEM = API_FINGERPRINT;
@@ -61,7 +61,8 @@ const char FINGERPRINT[] PROGMEM = API_FINGERPRINT;
 /* data */
 float temp = -1024.f, humid = -1024.f;
 
-time_t last_post, last_config;
+time_t last_post = 0, last_config = 0,
+       last_water = 0, stop_water = 0;
 
 /* code */
 void control(char c, short *val, short max, short min, short interval) {
@@ -155,7 +156,7 @@ bool update_config(config_t *config) {
   /* flush response */
   while(client.available()) client.read();
 
-  client.println("GET " API_BASEPATH "/settings?id=" API_ID "&fields=rpm,door,master HTTP/1.1");
+  client.println("GET " API_BASEPATH "/settings?id=" API_ID "&fields=rpm,door,master,water HTTP/1.1");
   client.println("Host: " API_HOST);
   if(!client.println()) {
     LOGLN("Failed to send /settings request");
@@ -218,6 +219,9 @@ bool update_config(config_t *config) {
 
   config->rpm = json["rpm"].as<unsigned short>();
   config->rpm = CLAMP(config->rpm, 1023, 0);
+
+  config->water = json["water"].as<unsigned short>();
+  config->water = CLAMP(config->water, INT16_MAX, 0);
   return true;
 }
 
@@ -236,7 +240,6 @@ void setup() {
   analogWriteRange(PWM_MAX);
   analogWriteFreq(1000);
 
-  water_servo.attach(AO_WATER_PIN);
   door_servo.attach(AO_DOOR_PIN);
   temp_sensor.begin(TEMP_SDA, TEMP_SCL);
 
@@ -261,8 +264,7 @@ void loop() {
   while(Serial.available())
     control(Serial.read(), &control_val, CONTROL_MAX, CONTROL_MIN, CONTROL_INTERVAL);
 
-  /* TODO: implement */
-  water_servo.write(control_val);
+  analogWrite(AO_WATER_PIN, config.water);
 
   if(config.master) {
     door_servo.write(config.door);
@@ -282,7 +284,22 @@ void loop() {
       LOGLN("Failed to update config");
     }
 
-    LOGF("cfg: master=%d door=%d rpm=%d\n", config.master, config.door, config.rpm);
+    LOGF("cfg: master=%d door=%d rpm=%d water=%d\n",
+         config.master, config.door, config.rpm, config.water);
+  }
+
+  if(millis() > last_water + config.water*1000) {
+    LOGLN("start water");
+    analogWrite(AO_WATER_PIN, WATER_POWER);
+    stop_water = millis() + WATER_DELAY;
+    last_water = INT64_MAX>>1;
+  }
+
+  if(millis() > stop_water) {
+    LOGLN("stop water");
+    analogWrite(AO_WATER_PIN, 0);
+    stop_water = INT64_MAX;
+    last_water = millis();
   }
 
   if(millis() > last_post + POST_INTERVAL) {

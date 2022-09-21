@@ -16,6 +16,9 @@
 #define POST_INTERVAL   1000
 #define CONFIG_INTERVAL 1000
 
+#define WATER_DELAY 100
+#define WATER_POWER 1023
+
 /* api */
 #define API_HOST        "api.simsva.se"
 #define API_BASEPATH    "/wexteras"
