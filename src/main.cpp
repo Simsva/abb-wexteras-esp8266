@@ -51,8 +51,7 @@ WiFiClientSecure client;
 WiFiClient client;
 #endif
 
-short control_val = 0;
-config_t config = {.rpm = 0, .water = 5, .door = 0, .master = false};
+config_t config = {.rpm = 0, .water = 120, .door = 0, .master = false};
 
 #ifdef API_HTTPS
 const char FINGERPRINT[] PROGMEM = API_FINGERPRINT;
@@ -65,42 +64,6 @@ time_t last_post = 0, last_config = 0,
        last_water = 0, stop_water = 0;
 
 /* code */
-void control(char c, short *val, short max, short min, short interval) {
-  int p = 0;
-  switch(c) {
-  case '+':
-    *val += interval;
-    p = 1;
-    break;
-
-  case '-':
-    *val -= interval;
-    p = 1;
-    break;
-
-  case '1':
-    *val = max;
-    p = 1;
-    break;
-
-  case '0':
-    *val = min;
-    p = 1;
-    break;
-
-  case '=':
-    *val = 0.5*(max+min);
-
-  case 'p':
-    p = 1;
-    break;
-  }
-  *val = CLAMP(*val, max, min);
-  if(p) {
-    LOGF("control:%d\n", control_val);
-  }
-}
-
 bool api_connect(WiFiClient *c) {
   if(!c->connected()) {
     LOG("Connecting to API");
@@ -261,9 +224,6 @@ void setup() {
 }
 
 void loop() {
-  while(Serial.available())
-    control(Serial.read(), &control_val, CONTROL_MAX, CONTROL_MIN, CONTROL_INTERVAL);
-
   analogWrite(AO_WATER_PIN, config.water);
 
   if(config.master) {
