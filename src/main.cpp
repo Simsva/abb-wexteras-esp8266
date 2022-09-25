@@ -31,10 +31,6 @@
 #define PWM_MAX (1023)
 #define PWM_MIN (0)
 
-#define CONTROL_MAX (180)
-#define CONTROL_MIN (0)
-#define CONTROL_INTERVAL (1)
-
 /* types */
 typedef struct {
   unsigned short rpm, water;
@@ -58,12 +54,20 @@ const char FINGERPRINT[] PROGMEM = API_FINGERPRINT;
 #endif
 
 /* data */
-float temp = -1024.f, humid = -1024.f;
+float temp = 0.f, humid = 0.f, control = 0.f;
 
 time_t last_post = 0, last_config = 0,
        last_water = 0, stop_water = 0;
 
 /* code */
+
+/* smooth for min <= x <= max */
+float phi(float x, float min, float max) {
+#define PHI_KERNEL(x) ((x)*(x))
+  return PHI_KERNEL(x-min)/(PHI_KERNEL(x-min)+PHI_KERNEL(max-x));
+#undef PHI_KERNEL
+}
+
 bool api_connect(WiFiClient *c) {
   if(!c->connected()) {
     LOG("Connecting to API");
@@ -231,8 +235,8 @@ void loop() {
     analogWrite(AO_FAN_PIN, config.rpm);
   } else {
     /* TODO: automatic control */
-    door_servo.write(0);
-    analogWrite(AO_FAN_PIN, 512);
+    door_servo.write((int)(control * 180));
+    analogWrite(AO_FAN_PIN, (int)(control * 1023));
   }
 
   if(millis() > last_config + CONFIG_INTERVAL) {
@@ -273,7 +277,11 @@ void loop() {
     } else {
       temp = temp_sensor.getTemperature();
       humid = temp_sensor.getHumidity();
-      LOGF("temp: %f\nhumid: %f\n", temp, humid);
+      control = phi(CLAMP(temp, CONTROL_TEMP_MAX, CONTROL_TEMP_MIN),
+                          CONTROL_TEMP_MIN, CONTROL_TEMP_MAX);
+      LOGF("temp: %f\nhumid: %f\nauto-control: %.1f%%\n",
+           temp, humid, control*100);
+      // LOGF("temp: %f\nhumid: %f\n", temp, humid);
 
 #ifdef DEBUG_LOG
       time_t start = millis();

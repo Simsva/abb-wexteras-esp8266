@@ -16,8 +16,15 @@
 #define POST_INTERVAL   1000
 #define CONFIG_INTERVAL 1000
 
-#define WATER_DELAY 100
+#define WATER_DELAY 1000
 #define WATER_POWER 1023
+
+/* control */
+#define CONTROL_TEMP_MIN  20
+#define CONTROL_TEMP_MAX  25
+/* unused */
+#define CONTROL_HUMID_MIN 10
+#define CONTROL_HUMID_MAX 70
 
 /* api */
 #define API_HOST        "api.simsva.se"
