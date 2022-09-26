@@ -17,7 +17,6 @@
 #define CONFIG_INTERVAL 1000
 
 #define WATER_DELAY 1000
-#define WATER_POWER 1023
 
 /* control */
 #define CONTROL_TEMP_MIN  20

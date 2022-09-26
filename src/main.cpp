@@ -228,8 +228,6 @@ void setup() {
 }
 
 void loop() {
-  analogWrite(AO_WATER_PIN, config.water);
-
   if(config.master) {
     door_servo.write(config.door);
     analogWrite(AO_FAN_PIN, config.rpm);
@@ -254,14 +252,14 @@ void loop() {
 
   if(millis() > last_water + config.water*1000) {
     LOGLN("start water");
-    analogWrite(AO_WATER_PIN, WATER_POWER);
+    digitalWrite(AO_WATER_PIN, HIGH);
     stop_water = millis() + WATER_DELAY;
     last_water = INT64_MAX>>1;
   }
 
   if(millis() > stop_water) {
     LOGLN("stop water");
-    analogWrite(AO_WATER_PIN, 0);
+    digitalWrite(AO_WATER_PIN, LOW);
     stop_water = INT64_MAX;
     last_water = millis();
   }
